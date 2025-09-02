@@ -1,0 +1,18 @@
+server:
+  port: 8082
+
+spring:
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ead-course
+    username: postgres
+  jpa:
+    hibernate:
+      ddl-auto: update
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+      jdbc:
+        lob.non-contextual-creation: true
+      properties:
+        hibernate:
+          show_sql: true
