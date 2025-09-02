@@ -3,11 +3,19 @@ package com.ead.authuser.controllers;
 import com.ead.authuser.dtos.UserDto;
 import com.ead.authuser.models.UserModel;
 import com.ead.authuser.service.UserService;
+import com.ead.authuser.specification.SpecificationTemplate;
 import com.fasterxml.jackson.annotation.JsonView;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.hateoas.Link;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -15,6 +23,9 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -25,8 +36,20 @@ public class UserController {
     UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<UserModel>> getAllUsers() {
-        return ResponseEntity.status(HttpStatus.OK).body(userService.getAllUsers());
+    public ResponseEntity<Page<UserModel>> getAllUsers(@PageableDefault(page = 0, size = 10, sort = "userId", direction = Sort.Direction.ASC)
+                                                       Pageable pageable, SpecificationTemplate.UserSpec spec) {
+
+        Page<UserModel> userModelPage = userService.findAll(pageable, spec);
+
+        if(!userModelPage.isEmpty()) {
+
+            for(var user : userModelPage.toList()) {
+                user.add(linkTo(methodOn(UserController.class).getOneUser(user.getUserId())).withSelfRel());
+            }
+
+        }
+
+        return ResponseEntity.status(HttpStatus.OK).body(userModelPage);
     }
 
     @GetMapping("/{userId}")
@@ -56,7 +79,8 @@ public class UserController {
 
     @PutMapping("/{userId}")
     public ResponseEntity<Object> updateUser(@PathVariable(value = "userId") UUID userId,
-                                             @JsonView(UserDto.UserView.UserPut.class) @RequestBody UserDto dto) {
+                                             @JsonView(UserDto.UserView.UserPut.class)
+                                             @RequestBody @Validated(UserDto.UserView.UserPut.class) UserDto dto) {
         Optional<UserModel> userModel = userService.findById(userId);
 
         userModel.ifPresentOrElse(
@@ -77,7 +101,9 @@ public class UserController {
 
     @PutMapping("/{userId}/password")
     public ResponseEntity<Object> updatePassword(@PathVariable(value = "userId") UUID userId,
-                                             @JsonView(UserDto.UserView.PasswordPut.class) @RequestBody UserDto dto) {
+                                             @JsonView(UserDto.UserView.PasswordPut.class)
+                                             @RequestBody
+                                             @Validated(UserDto.UserView.PasswordPut.class) UserDto dto) {
         Optional<UserModel> userModel = userService.findById(userId);
 
         userModel.ifPresentOrElse(
@@ -99,7 +125,8 @@ public class UserController {
 
     @PutMapping("/{userId}/image")
     public ResponseEntity<Object> updateImage(@PathVariable(value = "userId") UUID userId,
-                                                @JsonView(UserDto.UserView.ImagePut.class) @RequestBody UserDto dto) {
+                                                @JsonView(UserDto.UserView.ImagePut.class) @RequestBody
+                                                @Validated(UserDto.UserView.ImagePut.class) UserDto dto) {
         Optional<UserModel> userModel = userService.findById(userId);
 
         userModel.ifPresentOrElse(
